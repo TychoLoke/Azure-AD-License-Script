@@ -2,12 +2,12 @@
 Connect-MsolService
 
 # Define a dictionary of SKU to common name
-$energy21 = @{
-    "energy21nl:O365_BUSINESS_ESSENTIALS" = "Microsoft 365 Business Basic"
-    "energy21nl:SPB" = "Microsoft 365 Business Premium"
-    "energy21nl:POWER_BI_STANDARD" = "Power BI Standaard"
-    "energy21nl:FLOW_FREE" = "Microsoft Flow Free"
-    "energy21nl:STREAM" = "Microsoft Stream"
+$skuID = @{
+    "companyname:O365_BUSINESS_ESSENTIALS" = "Microsoft 365 Business Basic"
+    "companyname:SPB" = "Microsoft 365 Business Premium"
+    "companyname:POWER_BI_STANDARD" = "Power BI Standaard"
+    "companyname:FLOW_FREE" = "Microsoft Flow Free"
+    "companyname:STREAM" = "Microsoft Stream"
     # Add more SKUs and common names here as needed
 }
 
@@ -31,9 +31,9 @@ foreach ($user in $users) {
         $sku = $license.AccountSkuId
 
         # Check if the SKU is in the energy21 dictionary
-        if ($energy21.ContainsKey($sku)) {
+        if ($skuID.ContainsKey($sku)) {
             # Use the common name from the dictionary
-            $commonName = $energy21[$sku]
+            $commonName = $skuID[$sku]
         } else {
             # Use the original SKU
             $commonName = $sku

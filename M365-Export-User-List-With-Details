@@ -30,7 +30,7 @@ foreach ($user in $users) {
         # Get the SKU of the license
         $sku = $license.AccountSkuId
 
-        # Check if the SKU is in the energy21 dictionary
+        # Check if the SKU is in the company dictionary
         if ($skuID.ContainsKey($sku)) {
             # Use the common name from the dictionary
             $commonName = $skuID[$sku]

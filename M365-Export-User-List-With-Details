@@ -1,3 +1,5 @@
+# script is authored by Tycho Löke
+
 # Connect to Azure AD
 Connect-MsolService
 

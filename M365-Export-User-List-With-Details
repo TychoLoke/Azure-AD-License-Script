@@ -1,17 +1,34 @@
-# script is authored by Tycho Löke
+# Script authored by Tycho Löke
+
+# Define your company name here
+$companyName = "companyname"
+
+# URL to the SKU dictionary file
+$skuDictionaryUrl = "https://raw.githubusercontent.com/tycholoke/Azure-AD-License-Script/main/sku_dictionary.ps1"
+
+# Download the content from the URL
+$skuDictionaryContent = Invoke-WebRequest -Uri $skuDictionaryUrl
+
+# Create an empty hash table for the SKU dictionary
+$skuID = @{}
+
+# Parse the content to construct the SKU dictionary
+$skuDictionaryContent.Content -split "`n" | Where-Object { $_.Trim() -ne "" -and $_.Trim() -ne "`$skuID = @{" } | ForEach-Object {
+    $parts = $_ -split ' = '
+    if ($parts.Length -eq 2) {
+        $key = $parts[0].Trim().Replace("`$companyname", $companyName)
+        $value = $parts[1].Trim().Trim('"')
+        $skuID[$key] = $value
+    }
+}
+
+# Import required module for Excel export
+if (!(Get-Module -Name ImportExcel -ListAvailable)) {
+    Install-Module -Name ImportExcel -Force -Scope CurrentUser
+}
 
 # Connect to Azure AD
 Connect-MsolService
-
-# Define a dictionary of SKU to common name
-$skuID = @{
-    "companyname:O365_BUSINESS_ESSENTIALS" = "Microsoft 365 Business Basic"
-    "companyname:SPB" = "Microsoft 365 Business Premium"
-    "companyname:POWER_BI_STANDARD" = "Power BI Standaard"
-    "companyname:FLOW_FREE" = "Microsoft Flow Free"
-    "companyname:STREAM" = "Microsoft Stream"
-    # Add more SKUs and common names here as needed
-}
 
 # Get all licensed users
 $users = Get-MsolUser -All | Where-Object {$_.IsLicensed -eq $True}
@@ -22,34 +39,34 @@ $userLicenses = @()
 # Loop through each user
 foreach ($user in $users) {
     # Get the licenses assigned to the user
-    $licenses = (Get-MsolUser -UserPrincipalName $user.UserPrincipalName).Licenses
+    $licenses = $user.Licenses
 
-    # Create an empty string to store the license names
-    $licenseNames = ""
+    # Create an empty array to store the license names
+    $licenseNames = @()
 
     # Loop through each license
     foreach ($license in $licenses) {
-        # Get the SKU of the license
-        $sku = $license.AccountSkuId
+        # Construct the SKU key for dictionary lookup
+        $skuKey = "${companyName}:" + $license.AccountSkuId.Split(":")[1]
 
-        # Check if the SKU is in the company dictionary
-        if ($skuID.ContainsKey($sku)) {
+        # Check if the SKU key is in the company dictionary
+        if ($skuID.ContainsKey($skuKey)) {
             # Use the common name from the dictionary
-            $commonName = $skuID[$sku]
+            $commonName = $skuID[$skuKey]
         } else {
             # Use the original SKU
-            $commonName = $sku
+            $commonName = $license.AccountSkuId
         }
 
-        # Add the license name to the string
-        $licenseNames += "$commonName, "
+        # Add the license name to the array
+        $licenseNames += $commonName
     }
 
-    # Remove the trailing comma and space from the license names string
-    $licenseNames = $licenseNames.TrimEnd(', ')
+    # Join the license names into a string
+    $licenseNames = $licenseNames -join ', '
 
-    # Add the user's display name, email and licenses to the userLicenses array
-    $userLicenses += New-Object PSObject -Property @{
+    # Add the user's display name, email, and licenses to the userLicenses array
+    $userLicenses += [PSCustomObject]@{
         DisplayName = $user.DisplayName
         Email = $user.UserPrincipalName
         Licenses = $licenseNames
@@ -57,4 +74,7 @@ foreach ($user in $users) {
 }
 
 # Export the userLicenses array to an Excel file
-$userLicenses | Export-Excel -Path "C:\User-Licenses.xlsx" -WorkSheetName "LicensedUsers" -AutoSize
+$filePath = "C:\\User-Licenses.xlsx"
+$userLicenses | Export-Excel -Path $filePath -WorkSheetName "LicensedUsers" -AutoSize
+
+Write-Host "Exported user licenses to $filePath" -ForegroundColor Green
